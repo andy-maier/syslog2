@@ -339,21 +339,39 @@ class SysLogHandler(logging.Handler):
 
         if address == 'local':
             last_exc = None
+            last_address = None
+            last_socktype = None
             for _address, _socktype, _format in \
                     SysLogHandler._local_targets[_PLATFORM]:
                 try:
                     self._init_target(_address, _socktype, _format)
                     break
                 except Exception as exc:  # pylint: disable=broad-except TODO
+                    print("Debug: init: trying target: address={!r} "
+                          "socktype={!r} format={!r} failed with {}: {}".
+                          format(_address, _socktype, _format,
+                                 exc.__class__.__name__, exc))
                     last_exc = exc
+                    last_address = _address
+                    last_socktype = _socktype
                     continue
             else:
                 # TODO: Define exception
                 raise Exception(
-                    "No target worked, last error: {}".format(last_exc))
+                    "Could not set up any target, last error for address={!r}, "
+                    "socktype={!r}: {}: {}".
+                    format(last_address, last_socktype,
+                           last_exc.__class__.__name__, last_exc))
         else:
-            # May raise exception
-            self._init_target(address, socktype, format)
+            try:
+                self._init_target(address, socktype, format)
+            except Exception as exc:  # pylint: disable=broad-except TODO
+                # TODO: Define exception
+                # pylint: disable=raise-missing-from
+                raise Exception(
+                    "Could not set up target for address={!r}, socktype={!r}: "
+                    "{}: {}".
+                    format(address, socktype, exc.__class__.__name__, exc))
 
         print("Debug: init: _PLATFORM={!r}, final target: address={!r} "
               "socktype={!r} format={!r}".
@@ -378,7 +396,7 @@ class SysLogHandler(logging.Handler):
 
         elif _PLATFORM == 'windows':
             # self._win32_eventlog = ... # TODO: Implement
-            raise NotImplementedError
+            raise NotImplementedError("Windows event log not implemented")
 
         else:
             if format is None:
@@ -420,6 +438,10 @@ class SysLogHandler(logging.Handler):
                 try:
                     return self._unix_socket2(address, _socktype)
                 except Exception as exc:  # pylint: disable=broad-except TODO
+                    print("Debug: init _unix_socket: trying UNIX socket: "
+                          "address={!r} socktype={!r} failed with {}: {}".
+                          format(address, _socktype,
+                                 exc.__class__.__name__, exc))
                     last_exc = exc
                     continue
             else:  # pylint: disable=useless-else-on-loop
@@ -481,6 +503,10 @@ class SysLogHandler(logging.Handler):
             try:
                 sock = socket.socket(_family, _socktype, _proto)
             except OSError as exc:
+                print("Debug: init _internet_socket: creating socket: "
+                      "address={!r} socktype={!r} failed with {}: {}".
+                      format(address, _socktype,
+                             exc.__class__.__name__, exc))
                 last_exc = exc
                 continue
             if _socktype == socket.SOCK_STREAM:
@@ -488,13 +514,17 @@ class SysLogHandler(logging.Handler):
                     sock.connect(_sockaddr)
                 except OSError as exc:
                     last_exc = exc
+                    print("Debug: init _internet_socket: connecting to socket: "
+                          "address={!r} socktype={!r} failed with {}: {}".
+                          format(address, _socktype,
+                                 exc.__class__.__name__, exc))
                     sock.close()
                     continue
             return (sock, _socktype)
 
         raise OSError("Cannot create/connect socket for host {} "
-                      "port {}, last error: {}".
-                      format(host, port, last_exc))
+                      "port {}, last error: {}: {}".
+                      format(host, port, last_exc.__class__.__name__, last_exc))
 
     def _encode_priority(self, record):
         """
@@ -571,7 +601,7 @@ class SysLogHandler(logging.Handler):
             elif _PLATFORM == 'windows':
 
                 # TODO: Implement
-                raise NotImplementedError
+                raise NotImplementedError("Windows event log not implemented")
 
             else:  # A syslog platform
 
@@ -621,7 +651,7 @@ class SysLogHandler(logging.Handler):
                     macos_oslog.os_log_release(log)
             elif _PLATFORM == 'windows':
                 # TODO: Implement
-                raise NotImplementedError
+                raise NotImplementedError("Windows event log not implemented")
             else:
                 if self._socket is not None:
                     self._socket.close()
