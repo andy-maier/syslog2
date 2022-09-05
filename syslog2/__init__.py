@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-syslog2 - A better SysLogHandler
+syslog2 - An improved SysLogHandler for Python
 """
 
 from __future__ import absolute_import

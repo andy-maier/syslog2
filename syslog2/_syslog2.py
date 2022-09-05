@@ -28,6 +28,7 @@ import os
 from datetime import datetime
 import socket
 import logging
+import warnings
 
 import six
 import pytz
@@ -58,11 +59,20 @@ elif _PLATFORM == 'windows':
     import win32evtlogutil  # noqa: F401
 # pylint: enable=import-error,unused-import
 
-__all__ = ['SysLogHandler', 'SYSLOG_UDP_PORT', 'SYSLOG_TCP_PORT']
+__all__ = ['SysLogTargetError', 'SysLogHandler', 'SYSLOG_UDP_PORT',
+           'SYSLOG_TCP_PORT']
 
-# Default ports
+#: Default ports for syslog targets
 SYSLOG_UDP_PORT = 514
 SYSLOG_TCP_PORT = 514
+
+
+class SysLogTargetError(Exception):
+    """
+    Exception indicating that the specified system log target could not be
+    found or used.
+    """
+    pass
 
 
 class SysLogHandler(logging.Handler):
@@ -104,51 +114,56 @@ class SysLogHandler(logging.Handler):
         ],
     }
 
-    # Syslog severity codes.
-    # As defined in https://www.rfc-editor.org/rfc/rfc5424.html#section-6.2.1
-    #
-    # Note: Some Syslog descriptions use the term "priority" for this, but
-    # since RFC3264 and RFC5242 use the term "severity", we use that term as
-    # well.
-    # Note: Only a subset of these codes is used, see _level_map.
-    LOG_EMERG = 0           # system is unusable
-    LOG_ALERT = 1           # action must be taken immediately
-    LOG_CRIT = 2            # critical conditions
-    LOG_ERR = 3             # error conditions
-    LOG_WARNING = 4         # warning conditions
-    LOG_NOTICE = 5          # normal but significant condition
-    LOG_INFO = 6            # informational
-    LOG_DEBUG = 7           # debug-level messages
+    #: Syslog severity codes.
+    #:
+    #: Syslog severity codes are defined in
+    #: `RFC5424 section 6.2.1
+    #: <https://www.rfc-editor.org/rfc/rfc5424.html#section-6.2.1>`_
+    #:
+    #: Note: Some Syslog descriptions and the description of the standard Python
+    #: :class:`~logging.handlers.SysLogHandler` class use the term "priority"
+    #: for these severity codes.
+    LOG_EMERG = 0           #: system is unusable
+    LOG_ALERT = 1           #: action must be taken immediately
+    LOG_CRIT = 2            #: critical conditions
+    LOG_ERR = 3             #: error conditions
+    LOG_WARNING = 4         #: warning conditions
+    LOG_NOTICE = 5          #: normal but significant condition
+    LOG_INFO = 6            #: informational
+    LOG_DEBUG = 7           #: debug-level messages
 
     #: Syslog facility codes.
-    #: As defined in https://www.rfc-editor.org/rfc/rfc5424.html#section-6.2.1
-    LOG_KERN = 0            # kernel messages
-    LOG_USER = 1            # random user-level messages
-    LOG_MAIL = 2            # mail system
-    LOG_DAEMON = 3          # system daemons
-    LOG_AUTH = 4            # security/authorization messages
-    LOG_SYSLOG = 5          # messages generated internally by syslogd
-    LOG_LPR = 6             # line printer subsystem
-    LOG_NEWS = 7            # network news subsystem
-    LOG_UUCP = 8            # UUCP subsystem
-    LOG_CRON = 9            # clock daemon
-    LOG_AUTHPRIV = 10       # security/authorization messages (private)
-    LOG_FTP = 11            # FTP daemon
-    LOG_NTP = 12            # NTP subsystem
-    LOG_SECURITY = 13       # Log audit
-    LOG_CONSOLE = 14        # Log alert
-    LOG_SOLCRON = 15        # Scheduling daemon (Solaris)
-    LOG_LOCAL0 = 16         # reserved for local use
-    LOG_LOCAL1 = 17         # reserved for local use
-    LOG_LOCAL2 = 18         # reserved for local use
-    LOG_LOCAL3 = 19         # reserved for local use
-    LOG_LOCAL4 = 20         # reserved for local use
-    LOG_LOCAL5 = 21         # reserved for local use
-    LOG_LOCAL6 = 22         # reserved for local use
-    LOG_LOCAL7 = 23         # reserved for local use
+    #:
+    #: Syslog facility codes are defined in
+    #: `RFC5424 section 6.2.1
+    #: <https://www.rfc-editor.org/rfc/rfc5424.html#section-6.2.1>`_
+    LOG_KERN = 0            #: kernel messages
+    LOG_USER = 1            #: random user-level messages
+    LOG_MAIL = 2            #: mail system
+    LOG_DAEMON = 3          #: system daemons
+    LOG_AUTH = 4            #: security/authorization messages
+    LOG_SYSLOG = 5          #: messages generated internally by syslogd
+    LOG_LPR = 6             #: line printer subsystem
+    LOG_NEWS = 7            #: network news subsystem
+    LOG_UUCP = 8            #: UUCP subsystem
+    LOG_CRON = 9            #: clock daemon
+    LOG_AUTHPRIV = 10       #: security/authorization messages (private)
+    LOG_FTP = 11            #: FTP daemon
+    LOG_NTP = 12            #: NTP subsystem
+    LOG_SECURITY = 13       #: Log audit
+    LOG_CONSOLE = 14        #: Log alert
+    LOG_SOLCRON = 15        #: Scheduling daemon (Solaris)
+    LOG_LOCAL0 = 16         #: reserved for local use
+    LOG_LOCAL1 = 17         #: reserved for local use
+    LOG_LOCAL2 = 18         #: reserved for local use
+    LOG_LOCAL3 = 19         #: reserved for local use
+    LOG_LOCAL4 = 20         #: reserved for local use
+    LOG_LOCAL5 = 21         #: reserved for local use
+    LOG_LOCAL6 = 22         #: reserved for local use
+    LOG_LOCAL7 = 23         #: reserved for local use
 
-    #: Mapping of Syslog severity names to their codes.
-    _severity_names = {
+    #: Mapping of Syslog severity names to Syslog severity codes.
+    severity_names = {
         "alert": LOG_ALERT,
         "crit": LOG_CRIT,
         "critical": LOG_CRIT,
@@ -163,7 +178,7 @@ class SysLogHandler(logging.Handler):
         "warning": LOG_WARNING,
     }
 
-    #: Mapping of Syslog facility names to their codes.
+    #: Mapping of Syslog facility names to Syslog facility codes.
     facility_names = {
         'kern': LOG_KERN,
         'user': LOG_USER,
@@ -200,88 +215,82 @@ class SysLogHandler(logging.Handler):
                  format=None, append_nul=True):
         # pylint: disable=redefined-builtin
         """
-        Initialize the handler.
-
-        For socket-based communication with the syslog this includes creating
-        the socket, and for stream-based sockets connecting to the socket.
-
         Parameters:
 
           address (str or tuple(host(str), port(int)): Address of the target
-            Syslog, as follows:
-              - string 'local': Targets the local system log. The `socktype`
-                parameter is ignored. For details, see (TODO: Link).
-              - other string: Address for a UNIX domain socket. The `socktype`
+            system log, as follows:
+
+              * string "local": Targets the local system log. The ``socktype``
+                parameter is ignored. For details, see
+                :ref:`Local system log targets`.
+              * other string: Address for a UNIX domain socket. The ``socktype``
                 parameter specifies the socket type.
-              - tuple(host(str), port(int)): Hostname and port for an Internet
-                domain socket. The `socktype` parameter specifies the socket
+              * tuple(host(str), port(int)): Hostname and port for an Internet
+                domain socket. The ``socktype`` parameter specifies the socket
                 type.
 
           facility (int or str): Syslog facility to be used, either the facility
             code as an integer, or the facility name as a string using the
             names defined in :attr:`SysLogHandler.facility_names`. For details
-            on how this is used on macOS and Windows, see
-            (TODO: Link).
+            on how the syslog facility is used, see
+            :ref:`Use of the syslog facility`.
 
-          socktype (int or `None`): Socket type to be used when `address`
+          socktype (int or `None`): Socket type to be used when ``address``
             specifies a socket:
 
-            * `socket.SOCK_DGRAM` - datagram/UDP-based socket
-            * `socket.SOCK_STREAM` - stream/TCP-based socket
+            * :data:`py:socket.SOCK_DGRAM` - datagram/UDP-based socket
+            * :data:`py:socket.SOCK_STREAM` - stream/TCP-based socket
             * `None` - The socket type is automatically selected as
               follows:
 
-              - For UNIX domain sockets, `socket.SOCK_DGRAM` is tried first and
-                then `socket.SOCK_STREAM`.
+              - For UNIX domain sockets, :data:`py:socket.SOCK_DGRAM` is tried
+                first and then :data:`py:socket.SOCK_STREAM`.
               - For Internet domain sockets, the socket type is determined
                 when resolving the network address.
 
-          program (str): Value to be used for the "program" Syslog field.
-            If `None`, the base file name from `sys.args[0]` is used.
-            For details on how this is used on macOS and Windows, see
-            (TODO: Link).
+          program (str): A program identifier string that is used in the log
+            message. If `None`, the base file name from ``sys.args[0]`` is
+            used. For details on how the program identifier is used, see
+            :ref:`Use of the program identifier`.
 
           format (str): Selects the format of the log message that is sent to
             the system log, i.e. what is added to the message provided by the
             Python logging formatter. The Python logging formatter must match
             the selected format. Valid formats are:
 
-              * 'user' - The logging formatter needs to create the complete log
-                message that will be sent, and this class does not add or change
-                anything. The ``append_nul`` argument is ignored.
+            * "user" - The logging formatter needs to create the complete log
+              message that will be sent, and this class does not add or change
+              anything. The ``append_nul`` argument is ignored.
 
-              * 'pri' - The logging formatter needs to create the complete log
-                message except for ``<PRI>`` which is added to the front of the
-                log message by this class. A 0x00 Byte is appended as
-                determined by the ``append_nul`` argument. This is what the
-                standard Python SysLogHandler class does.
+            * "pri" - The logging formatter needs to create the complete log
+              message except for ``<PRI>`` which is added to the front of the
+              log message by this class. A 0x00 Byte is appended as
+              determined by the ``append_nul`` argument. This is what the
+              standard Python :class:`~logging.handlers.SysLogHandler` class
+              does.
 
-              * 'rfc5424' - Syslog format as defined in
-                https://www.ietf.org/rfc/rfc5424.html. The logging formatter
-                only creates the message field, and all other Syslog fields are
-                automatically populated. A 0x00 Byte is appended as determined
-                by the ``append_nul`` argument.
+            * "rfc5424" - Syslog format as defined in
+              `RFC5424 <https://www.ietf.org/rfc/rfc5424.html>`_.
+              The logging formatter only creates the message field, and all
+              other Syslog fields are automatically populated. A 0x00 Byte is
+              appended as determined by the ``append_nul`` argument.
 
-              * 'rfc3164' - Syslog format as defined in
-                https://www.ietf.org/rfc/rfc3164.html. The logging formatter
-                only creates the message field, and all other Syslog fields are
-                automatically populated. A 0x00 Byte is appended as determined
-                by the ``append_nul`` argument.
+            * "rfc3164" - Syslog format as defined in
+              `RFC3164 <https://www.ietf.org/rfc/rfc3164.html>`_.
+              The logging formatter only creates the message field, and all
+              other Syslog fields are automatically populated. A 0x00 Byte is
+              appended as determined by the ``append_nul`` argument.
 
-              * `None` - Dependent on the target, the right format is selected.
-                The logging formatter only creates the message field.
-                TODO: Implement.
+            * `None` - Dependent on the target, the right format is selected.
+              The logging formatter only creates the message field.
 
           append_nul (bool): Boolean controlling whether a 0x00 Byte is
             appended to the log message for some log formats. Some older Syslog
             servers need this.
 
         Raises:
-          Exception: None of the targets worked. TODO: Define exception
-          OSError: Used for reporting errors with the target (socket errors, or
-            API errors).
-          TypeError: Argument has invalid type.
-          ValueError: Argument has invalid value.
+          syslog2.SysLogTargetError: The target system log(s) could not be
+            found or used.
         """
 
         # Deferred initialization of mapping of Python log levels to
@@ -337,7 +346,7 @@ class SysLogHandler(logging.Handler):
         self._socktype = None
         self._format = None
         self._macos_logs = None  # For macos_unified platform
-        # No attriobutes needed for windows platform
+        # No attributes needed for windows platform
         self._socket = None  # For all other platforms
 
         if address == 'local':
@@ -349,7 +358,7 @@ class SysLogHandler(logging.Handler):
                 try:
                     self._init_target(_address, _socktype, _format)
                     break
-                except Exception as exc:  # pylint: disable=broad-except TODO
+                except OSError as exc:
                     print("Debug: init: trying target: address={!r} "
                           "socktype={!r} format={!r} failed with {}: {}".
                           format(_address, _socktype, _format,
@@ -359,8 +368,7 @@ class SysLogHandler(logging.Handler):
                     last_socktype = _socktype
                     continue
             else:
-                # TODO: Define exception
-                raise Exception(
+                raise SysLogTargetError(
                     "Could not set up any target, last error for address={!r}, "
                     "socktype={!r}: {}: {}".
                     format(last_address, last_socktype,
@@ -368,10 +376,9 @@ class SysLogHandler(logging.Handler):
         else:
             try:
                 self._init_target(address, socktype, format)
-            except Exception as exc:  # pylint: disable=broad-except TODO
-                # TODO: Define exception
+            except OSError as exc:
                 # pylint: disable=raise-missing-from
-                raise Exception(
+                raise SysLogTargetError(
                     "Could not set up target for address={!r}, socktype={!r}: "
                     "{}: {}".
                     format(address, socktype, exc.__class__.__name__, exc))
@@ -387,7 +394,7 @@ class SysLogHandler(logging.Handler):
         format).
 
         Raises:
-          Exception: Initialization failed for this target
+          OSError: Error with accessing the target system log.
         """
 
         if _PLATFORM == 'macos_unified':
@@ -448,14 +455,14 @@ class SysLogHandler(logging.Handler):
           tuple (socket, socktype)
 
         Raises:
-          Exception: Initialization failed for this target
+          OSError: Cannot connect to the UNIX domain socket.
         """
         if socktype is None:
             last_exc = None
             for _socktype in (socket.SOCK_DGRAM, socket.SOCK_STREAM):
                 try:
                     return self._unix_socket2(address, _socktype)
-                except Exception as exc:  # pylint: disable=broad-except TODO
+                except SysLogTargetError as exc:
                     print("Debug: init _unix_socket: trying UNIX socket: "
                           "address={!r} socktype={!r} failed with {}: {}".
                           format(address, _socktype,
@@ -475,7 +482,7 @@ class SysLogHandler(logging.Handler):
           tuple (socket, socktype)
 
         Raises:
-          Exception: Initialization failed for this target
+          OSError: Cannot connect to the UNIX domain socket.
         """
         # Note: Python 3 on Windows has removed the AF_UNIX member. We do not
         # use the function on Windows, but pylint does not know that.
@@ -501,7 +508,7 @@ class SysLogHandler(logging.Handler):
           tuple (socket, socktype)
 
         Raises:
-          Exception: Initialization failed for this target
+          OSError: Cannot resolve host or create/connect to the socket.
         """
         host, port = address
         if not (isinstance(host, six.string_types) and isinstance(port, int)):
@@ -550,7 +557,59 @@ class SysLogHandler(logging.Handler):
         code. The severity code is mapped from the log level of the Python log
         record.
         """
-        return self._facility * 8 + SysLogHandler._level_map[record.levelname]
+        return (self._facility << 3) | \
+            SysLogHandler._level_map[record.levelname]
+
+    def encodePriority(self, facility, priority):
+        """
+        **Deprecated:** Return the Syslog priority from the syslog facility and
+        severity.
+
+        The Syslog priority value is calculated using the algorithm defined in
+        `RFC5424 section 6.2.1
+        <https://www.rfc-editor.org/rfc/rfc5424.html#section-6.2.1>`_.
+
+        This method is of not much use for users and has been deprecated.
+
+        Parameters:
+          facility (int or str): Syslog facility to be used, either the facility
+            code as an integer, or the facility name as a string using the
+            names defined in :attr:`SysLogHandler.facility_names`.
+
+          priority (int or str): Syslog severity to be used, either the severity
+            code as an integer, or the severity name as a string using the
+            names defined in :attr:`SysLogHandler.severity_names`.
+
+        Returns:
+          int: Syslog priority value
+        """
+        warnings.warn(
+            "The syslog2.SysLogHandler.encodePriority() method is deprecated",
+            DeprecationWarning, 2)
+        if isinstance(facility, six.string_types):
+            facility = self.facility_names[facility]
+        if isinstance(priority, six.string_types):
+            priority = self.severity_names[priority]
+        return (facility << 3) | priority
+
+    def mapPriority(self, levelName):
+        """
+        **Deprecated:** Return the syslog severity code for a Python logging
+        level name.
+
+        This method is of not much use for users and has been deprecated.
+
+        Parameters:
+          levelName (str): Python logging level name. If this is not a valid
+            level name, the WARNING level is assumed.
+
+        Returns:
+          int: Syslog severity value.
+        """
+        warnings.warn(
+            "The syslog2.SysLogHandler.mapPriority() method is deprecated",
+            DeprecationWarning, 2)
+        return self._level_map.get(levelName, 'WARNING')
 
     @staticmethod
     def _timestamp_str(tm_secs):
@@ -558,6 +617,7 @@ class SysLogHandler(logging.Handler):
         Parameters:
           tm_secs (float): Time in seconds since the epoch (as returned by
             `time.time()`). Note, this implies UTC as the timezone.
+
         Returns:
           str: Timestamp as a string, in the format needed for RFC3164/5424.
         """
@@ -572,7 +632,7 @@ class SysLogHandler(logging.Handler):
         The input record is formatted using the Python logging formatter, and
         then the log message is built dependent on the selected format.
 
-        The record is then sent to the target.
+        The record is then sent to the target system log.
         """
         try:
 
