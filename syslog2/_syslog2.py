@@ -53,7 +53,7 @@ else:
 if _PLATFORM == 'macos_unified':
     import macos_oslog  # noqa: F401 pylint: disable=import-error,unused-import
 elif _PLATFORM == 'windows':
-    import pywin32  # noqa: F401 pylint: disable=import-error,unused-import
+    import win32evtlog  # noqa: F401 pylint: disable=import-error,unused-import
 
 __all__ = ['SysLogHandler', 'SYSLOG_UDP_PORT', 'SYSLOG_TCP_PORT']
 
@@ -334,7 +334,7 @@ class SysLogHandler(logging.Handler):
         self._socktype = None
         self._format = None
         self._macos_logs = None  # For macos_unified platform
-        self._pywin32_eventlog = None  # For windows platform
+        self._win32_eventlog = None  # For windows platform
         self._socket = None  # For all other platforms
 
         if address == 'local':
@@ -377,7 +377,7 @@ class SysLogHandler(logging.Handler):
             self._macos_logs = {}  # dict of Log objects, by logger name
 
         elif _PLATFORM == 'windows':
-            # self._pywin32_eventlog = ... # TODO: Implement
+            # self._win32_eventlog = ... # TODO: Implement
             raise NotImplementedError
 
         else:

@@ -44,12 +44,42 @@ jobs:
               }, \
               { \
                 \"os\": \"macos-latest\", \
+                \"python-version\": \"2.7\", \
+                \"package_level\": \"minimum\" \
+              }, \
+              { \
+                \"os\": \"macos-latest\", \
+                \"python-version\": \"2.7\", \
+                \"package_level\": \"latest\" \
+              }, \
+              { \
+                \"os\": \"macos-latest\", \
                 \"python-version\": \"3.4\", \
                 \"package_level\": \"minimum\" \
               }, \
               { \
                 \"os\": \"macos-latest\", \
                 \"python-version\": \"3.4\", \
+                \"package_level\": \"latest\" \
+              }, \
+              { \
+                \"os\": \"windows-latest\", \
+                \"python-version\": \"3.4\", \
+                \"package_level\": \"minimum\" \
+              }, \
+              { \
+                \"os\": \"windows-latest\", \
+                \"python-version\": \"3.4\", \
+                \"package_level\": \"latest\" \
+              }, \
+              { \
+                \"os\": \"windows-latest\", \
+                \"python-version\": \"3.10\", \
+                \"package_level\": \"minimum\" \
+              }, \
+              { \
+                \"os\": \"windows-latest\", \
+                \"python-version\": \"3.10\", \
                 \"package_level\": \"latest\" \
               } \
             ], \
@@ -84,11 +114,6 @@ jobs:
               }, \
               { \
                 \"os\": \"macos-latest\", \
-                \"python-version\": \"2.7\", \
-                \"package_level\": \"latest\" \
-              }, \
-              { \
-                \"os\": \"macos-latest\", \
                 \"python-version\": \"3.5\", \
                 \"package_level\": \"latest\" \
               }, \
@@ -104,12 +129,12 @@ jobs:
               }, \
               { \
                 \"os\": \"windows-latest\", \
-                \"python-version\": \"3.4\", \
+                \"python-version\": \"3.5\", \
                 \"package_level\": \"latest\" \
               }, \
               { \
                 \"os\": \"windows-latest\", \
-                \"python-version\": \"3.10\", \
+                \"python-version\": \"3.9\", \
                 \"package_level\": \"latest\" \
               } \
             ] \
