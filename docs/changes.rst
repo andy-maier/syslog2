@@ -5,9 +5,9 @@ Change log
 ==========
 
 
-syslog2 0.5.0.dev1
-------------------
+syslog2 0.5.0
+-------------
 
-Released: 2022-mm-dd
+Released: 2022-09-05
 
 Initial version

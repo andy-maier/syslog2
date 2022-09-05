@@ -34,19 +34,19 @@ import six
 import pytz
 
 # Determine the current operating system platform
-_system = platform.system()
-if _system == 'Linux':
+_SYSTEM = platform.system()
+if _SYSTEM == 'Linux':
     _PLATFORM = 'linux'
-elif _system == 'Darwin':  # macOS
+elif _SYSTEM == 'Darwin':  # macOS
     if tuple(map(int, platform.mac_ver()[0].split('.'))) >= (10, 12):
         _PLATFORM = 'macos_unified'  # unified logging system
     else:
         _PLATFORM = 'macos_syslog'   # Apple system log
 elif os.name == 'posix':  # Linux and macOS also have posix
     _PLATFORM = 'unix'
-elif _system == 'Windows':
+elif _SYSTEM == 'Windows':
     _PLATFORM = 'windows'
-elif _system.startswith('CYGWIN'):  # e.g. 'CYGWIN_NT-6.1'
+elif _SYSTEM.startswith('CYGWIN'):  # e.g. 'CYGWIN_NT-6.1'
     _PLATFORM = 'cygwin'
 else:
     _PLATFORM = 'other'
