@@ -1,6 +1,6 @@
 
-syslog2 - A better SysLogHandler
-********************************
+syslog2 - An improved SysLogHandler for Python
+**********************************************
 
 The project web site is: https://github.com/andy-maier/syslog2
 

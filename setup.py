@@ -164,7 +164,7 @@ setuptools.setup(
     cmdclass={
         'test': test,
     },
-    description="A better SysLogHandler",
+    description="An improved SysLogHandler for Python",
     long_description=read_file('README.rst'),
     long_description_content_type='text/x-rst',
     license="Apache Software License 2.0",

@@ -10,48 +10,71 @@ Introduction
 Functionality
 -------------
 
-Class :class:`syslog2.NocaseDict` is a case-insensitive ordered dictionary
-that preserves the original lexical case of its keys.
+The syslog2 package provides a :class:`syslog2.SysLogHandler` class that has
+some improvements over the standard Python
+:class:`py:logging.handlers.SysLogHandler` class:
 
-Example:
+* It supports a new value "local" for the `address` init parameter that
+  automatically does the right thing for logging to the local system log,
+  without requiring additional syslog demons or the like (other than what is
+  built in to the operating system).
 
-.. code-block:: bash
+* When a syslog target is used, it supports the log formats defined in
+  `RFC3164 <https://www.ietf.org/rfc/rfc3164.html>`_ and
+  `RFC5424 <https://www.ietf.org/rfc/rfc5424.html>`_ via a new new optional
+  init parameter `format`.
 
-    $ python
-    >>> from syslog2 import NocaseDict
+* It supports placing a program name into the log record via a new optional
+  init parameter `program`.
 
-    >>> dict1 = NocaseDict({'Alpha': 1, 'Beta': 2})
+* It supports adding a 0x00 Byte at the end of the log message for compatibility
+  with older syslog environments, via a new optional init parameter
+  `append_nul` that defaults to adding the Byte. This was previously an
+  undocumented class attribute (with the same default).
 
-    >>> dict1['ALPHA']  # Lookup by key is case-insensitive
-    1
+* The previously undocumented class attribute
+  :data:`~syslog2.SysLogHandler.facility_names` is now officially available for
+  callers to determine valid Syslog facility names and to map them to facility
+  codes.
 
-    >>> print(dict1)  # Keys are returned with the original lexical case
-    NocaseDict({'Alpha': 1, 'Beta': 2})
+* A new class attribute `severity_names` has been added for callers to determine
+  valid Syslog severity names and to map them to severity codes.
 
-The :class:`~syslog2.NocaseDict` class supports the functionality of the
-built-in `dict class of Python 3.8`_ on all Python versions it supports with
-the following exceptions (and the case-insensitivity of course):
+* The reachability of the targeted system log is verified already during
+  creation of the SysLogHandler object, and not only when logging a message
+  like the standard Python SysLogHandler class does. Issues with the system
+  log are raised through a new :exc:`syslog2.SysLogTargetError` exception.
 
-* The ``iter..()``, ``view..()`` and ``has_key()`` methods are only present
-  on Python 2, consistent with the built-in ``dict`` class.
+The new SysLogHandler class is mostly backwards compatible with the standard
+Python SysLogHandler. There are some incompatibilities, though:
 
-* The ``keys()``, ``values()`` and ``items()`` methods return a list on Python 2
-  and a dictionary view on Python 3, consistent with the built-in ``dict``
-  class.
+* The undocumented class attribute `append_nul` has been removed. This
+  feature is now available as a new optional init parameter `append_nul`.
 
-.. _dict class of Python 3.8: https://docs.python.org/3.8/library/stdtypes.html#dict
+* The undocumented class attributes `priority_map` and `priority_names`
+  have been removed or made private.
 
-Functionality can be added using mixin classes:
+* The new :exc:`syslog2.SysLogTargetError` exception needs to be handled.
 
-* :class:`~syslog2.HashableMixin` mixin class: Adds case-insensitive
-  hashability.
+Migration to use the new SysLogHandler class is easy as long as you did not
+use any of the undocumented features:
 
-* :func:`~syslog2.KeyableByMixin` mixin generator function: Adds ability
-  to get the key from an attribute of the value object.
+Old code:
 
-Why yet another case-insensitive dictionary: We found that all previously
-existing case-insensitive dictionary packages on Pypi either had flaws, were
-not well maintained, or did not support the Python versions we needed.
+.. code-block:: python
+
+    from logging.handlers import SysLogHandler
+
+    # ... use it
+
+New code:
+
+.. code-block:: python
+
+    from syslog2 import SysLogHandler
+
+    # ... use it
+
 
 .. _`Installation`:
 
@@ -64,14 +87,29 @@ Installation
 Supported environments
 ^^^^^^^^^^^^^^^^^^^^^^
 
-The package does not have any dependencies on the type of operating system and
-is regularly tested in CI systems on the following operating systems:
+The package is supported on the following combinations of operating systems
+and Python versions:
 
-* Ubuntu, native Windows, CygWin, OS-X / macOS
+===================  ========================
+Operating system     Suported Python versions
+===================  ========================
+Linux                2.7, 3.4 and higher
+UNIX                 2.7, 3.4 and higher
+macOS                3.5 and higher (1)
+Windows              2.7, 3.5 and higher (2)
+CygWin               2.7, 3.4 and higher
+other                2.7, 3.4 and higher
+===================  ========================
 
-The package is supported on the following Python versions:
+Notes:
 
-* Python: 2.7, 3.4 and all higher 3.x versions
+* (1) The underlying `macos-oslog <https://pypi.org/project/macos-oslog/>`_
+  package supports only Python 3.5 and higher.
+* (2) The underlying `pywin32 <https://pypi.org/project/pywin32/>`_
+  package does not support Python 3.4.
+
+The package is regularly tested in CI systems with a number of different Python
+versions on Ubuntu, Windows, and macOS.
 
 
 .. _`Installing`:

@@ -37,15 +37,8 @@ def get_version(version_file):
     exec(version_source, globals)
     return globals['__version__']
 
-
-XYZ_VAR = 'xyz'
-
-# RST variable substitutions
-rst_prolog = """
-
-.. |XYZ_VAR| replace:: ``"{var}"``
-
-""".format(var=XYZ_VAR)
+# RST variable substitutions would be done here
+rst_prolog = ""
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -102,7 +95,7 @@ project = u'syslog2'
 author = u"Andreas Maier"
 
 # The short description of the package.
-_short_description = u"A better SysLogHandler"
+_short_description = u"An improved SysLogHandler for Python"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
