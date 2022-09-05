@@ -21,19 +21,9 @@ pytz>=2019.1
 macos_oslog>=0.5.0; sys_platform=='darwin' and python_version >= '3.5'
 
 # There is no version of pywin32 for py34.
-# Pywin32 version 222 is inconsistent in its 32-bit/64-bit support on py37
-# Pywin32 version 226 needs to be excluded, see issues #1946 and #1975.
-# Issue #2675: Pywin32 version 225+ provides wheel files for py38, but does not
-#   advertise py38 on Pypi. That causes pywin32==225 to fail but pywin32>=225
-#   to work.
-#   Reported to pywin32 as https://github.com/mhammond/pywin32/issues/1448.
-#   Addressed by increasing the minimum version of pywin32 to >=227 on Python >=3.8.
-# TODO: To circumvent https://github.com/pypa/pip/issues/10701, we exclude
-#       py3.10. Remove the circumvention once fixed.
-pywin32>=222,!=226; sys_platform == 'win32' and python_version == '2.7'
-pywin32>=222,!=226; sys_platform == 'win32' and python_version >= '3.5' and python_version <= '3.6'
-pywin32>=223,!=226; sys_platform == 'win32' and python_version == '3.7'
-pywin32>=227; sys_platform == 'win32' and python_version >= '3.8' and python_version != '3.10'
+# Pywin32 version 227 (or so) is needed for using the win32evtlog module.
+pywin32>=228; sys_platform == 'win32' and python_version <= '3.9'
+pywin32>=302; sys_platform == 'win32' and python_version >= '3.10'
 
 
 # Indirect dependencies are not specified in this file.
