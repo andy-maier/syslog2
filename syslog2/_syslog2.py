@@ -437,6 +437,9 @@ class SysLogHandler(logging.Handler):
         Raises:
           Exception: Initialization failed for this target
         """
+        # Note: Python 3 on Windows has removed the AF_UNIX member. We do not
+        # use the function on Windows, but pylint does not know that.
+        # pylint: disable=no-member
         sock = socket.socket(socket.AF_UNIX, socktype)
         assert sock is not None
         try:
