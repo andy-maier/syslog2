@@ -617,9 +617,10 @@ class SysLogHandler(logging.Handler):
                 macos_oslog.os_log(log=log, level=macos_level, message=line)
 
             elif _PLATFORM == 'windows':
+
                 win32_event_type = SysLogHandler._level_map[record.levelname]
                 event_id = 1  # TODO: Find out how to set this
-                event_category = 1  # TODO: Find out how to set this
+                event_category = 0  # TODO: Find out how to set this
 
                 win32evtlogutil.ReportEvent(
                     self._program, event_id, eventCategory=event_category,
