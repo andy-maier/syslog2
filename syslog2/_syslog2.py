@@ -50,10 +50,13 @@ elif _system.startswith('CYGWIN'):  # e.g. 'CYGWIN_NT-6.1'
 else:
     _PLATFORM = 'other'
 
+# pylint: disable=import-error,unused-import
 if _PLATFORM == 'macos_unified':
-    import macos_oslog  # noqa: F401 pylint: disable=import-error,unused-import
+    import macos_oslog  # noqa: F401
 elif _PLATFORM == 'windows':
-    import win32evtlog  # noqa: F401 pylint: disable=import-error,unused-import
+    import win32evtlog  # noqa: F401
+    import win32evtlogutil  # noqa: F401
+# pylint: enable=import-error,unused-import
 
 __all__ = ['SysLogHandler', 'SYSLOG_UDP_PORT', 'SYSLOG_TCP_PORT']
 
@@ -294,11 +297,11 @@ class SysLogHandler(logging.Handler):
                 }
             elif _PLATFORM == 'windows':
                 SysLogHandler._level_map = {
-                    'DEBUG': None,  # TBD
-                    'INFO': None,  # TBD
-                    'WARNING': None,  # TBD
-                    'ERROR': None,  # TBD
-                    'CRITICAL': None,  # TBD
+                    'DEBUG': win32evtlog.EVENTLOG_INFORMATION_TYPE,
+                    'INFO': win32evtlog.EVENTLOG_INFORMATION_TYPE,
+                    'WARNING': win32evtlog.EVENTLOG_WARNING_TYPE,
+                    'ERROR': win32evtlog.EVENTLOG_ERROR_TYPE,
+                    'CRITICAL': win32evtlog.EVENTLOG_ERROR_TYPE,
                 }
             else:  # A syslog platform
                 SysLogHandler._level_map = {
@@ -334,7 +337,7 @@ class SysLogHandler(logging.Handler):
         self._socktype = None
         self._format = None
         self._macos_logs = None  # For macos_unified platform
-        self._win32_eventlog = None  # For windows platform
+        # No attriobutes needed for windows platform
         self._socket = None  # For all other platforms
 
         if address == 'local':
@@ -388,19 +391,34 @@ class SysLogHandler(logging.Handler):
         """
 
         if _PLATFORM == 'macos_unified':
+
             if format is None:
                 format = 'user'
+
             # The Log objects will be created deferred, in emit(), one per
             # logger name.
             self._macos_logs = {}  # dict of Log objects, by logger name
 
         elif _PLATFORM == 'windows':
-            # self._win32_eventlog = ... # TODO: Implement
-            raise NotImplementedError("Windows event log not implemented")
+
+            if format is None:
+                format = 'user'
+
+            # Register the win32service.pyd message file provided by the
+            # pywin32 package. It contains some basic message placeholders
+            # that are used in emit(). Note that use of these placeholders will
+            # make the event logs bigger compared to using message IDs, because
+            # the entire message string is held in the log.
+            pywin32_dir = os.path.dirname(win32evtlogutil.__file__)
+            msg_file = os.path.join(pywin32_dir, 'win32service.pyd')
+            win32evtlogutil.AddSourceToRegistry(
+                self._program, msg_file, "Application")
 
         else:
+
             if format is None:
                 format = 'rfc5424'
+
             # A syslog platform
             if isinstance(address, six.string_types):
                 # UNIX domain socket
@@ -599,9 +617,13 @@ class SysLogHandler(logging.Handler):
                 macos_oslog.os_log(log=log, level=macos_level, message=line)
 
             elif _PLATFORM == 'windows':
+                win32_event_type = SysLogHandler._level_map[record.levelname]
+                event_id = 1  # TODO: Find out how to set this
+                event_category = 1  # TODO: Find out how to set this
 
-                # TODO: Implement
-                raise NotImplementedError("Windows event log not implemented")
+                win32evtlogutil.ReportEvent(
+                    self._program, event_id, eventCategory=event_category,
+                    eventType=win32_event_type, strings=[line])
 
             else:  # A syslog platform
 
@@ -650,8 +672,8 @@ class SysLogHandler(logging.Handler):
                 for log in self._macos_logs.values():
                     macos_oslog.os_log_release(log)
             elif _PLATFORM == 'windows':
-                # TODO: Implement
-                raise NotImplementedError("Windows event log not implemented")
+                # No resources need to be closed/released
+                pass
             else:
                 if self._socket is not None:
                     self._socket.close()
