@@ -7,6 +7,14 @@ import logging
 import syslog2
 
 
+def test_platform():
+    """
+    Debug the platform.
+    """
+    # pylint: disable=protected-access
+    print("Debug: _PLATFORM={!r}".format(syslog2._syslog2._PLATFORM))
+
+
 def test_syslog_rfc5424():
     """
     Simple test to start with, needs improvement.
